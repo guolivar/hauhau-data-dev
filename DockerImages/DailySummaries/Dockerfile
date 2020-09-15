@@ -10,6 +10,7 @@ RUN mkdir -p /plots
 COPY daily_summary_HAUHAU.R /daily_summary_HAUHAU.R
 COPY secret_aws.txt /secret_aws.txt
 COPY secret_hauhauapikey.txt /secret_hauhauapikey.txt
+COPY hauhau-devices.csv /hauhau-devices.csv
 
 # Run the R-packages
 CMD Rscript daily_summary_HAUHAU.R

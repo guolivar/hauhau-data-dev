@@ -25,8 +25,17 @@ if (!bucket_exists(bucket_out)){
 base_url <- "http://stats.iaqsensors.com/hauhau/api/requestDeviceData?"
 apiKey <- as.character(read_csv("./secret_hauhauapikey.txt",col_names = FALSE))
 #==================================
+# Google Map API stuff
+secret_google <- read_delim("./secret_googlemaps.txt", 
+                            " ", escape_double = FALSE, trim_ws = TRUE,col_names = FALSE)
+#==================================
+# Hologram API stuff
+secret_hologram <- read_delim("./secret_hologram.txt", 
+                              " ", escape_double = FALSE, trim_ws = TRUE)
+#==================================
 # This call assumes it's UTC in the internal clock
 x_now <- Sys.time()
+x_now <- as.POSIXct("2020-09-01 00:00:00")
 # Now it's moved to NZST
 x_now <- x_now + 12 * 3600
 # The beginning of this summary
@@ -42,6 +51,9 @@ hauhau_devices <- read_delim("hauhau-devices.csv",
                              escape_double = FALSE,
                              trim_ws = TRUE)
 names(hauhau_devices) <- c('name','devID','type','location','user','guestflag')
+hauhau_devices$lat <- NA
+hauhau_devices$lon <- NA
+hauhau_devices$loc_accuracy <- NA
 
 for (device in hauhau_devices$devID){
   print(device)
@@ -81,6 +93,11 @@ for (device in hauhau_devices$devID){
   dataHH$humidity <- NA
   dataHH$co2 <- NA
   dataHH$pm25 <- NA
+  id_dev <- which(hauhau_devices$devID==device)
+  geoloc <- unlist(strsplit(server_response$geoloc, ","))
+  hauhau_devices$lat[id_dev] <- geoloc[1]
+  hauhau_devices$lon[id_dev] <- geoloc[2]
+  hauhau_devices$loc_accuracy[id_dev] <- geoloc[3]
   
   for (i in (1:npoints)){
     dataHH$date[i] <- as.POSIXct(jreq1[[i]][[1]])
@@ -107,7 +124,7 @@ for (device in hauhau_devices$devID){
            y.relation = 'free',
            main = paste0(server_response$name," - ",server_response$location))
   dev.off()
-  
+
   # Save the plot to the S3 bucket
   put_object(file = paste0("./plots/",server_response$name,".png"),
              object = paste0(server_response$name,".png"),
@@ -115,4 +132,37 @@ for (device in hauhau_devices$devID){
              multipart = TRUE,
              acl = "public-read")
   
+}
+
+# Fetch location data from Hologram
+# Fetch the ODIN details
+# THIS VERSION ONLY FETCHES ODIN WITH WANTED TAG
+base_url <- "https://dashboard.hologram.io/api/1/devices/locations?"
+built_url <- paste0(base_url,
+                    "orgid=",secret_hologram$orgid,"&",
+                    "apikey=",secret_hologram$apikey,"&",
+                    "tagname=HauHau")
+req1 <- curl_fetch_memory(built_url)
+jreq1 <- fromJSON(rawToChar(req1$content))$data
+ndevices <- length(jreq1)
+all_devices <- data.frame(id = (1:ndevices),name = NA, lon = NA, lat = NA)
+
+for (i in (1:ndevices)){
+  all_devices$id[i] <- jreq1[[i]]$deviceid
+  all_devices$name[i] <- jreq1[[i]]$name
+  all_devices$lon[i] <- jreq1[[i]]$longitude
+  all_devices$lat[i] <- jreq1[[i]]$latitude
+}
+
+hauhau_devices$holoLAT <- NA
+hauhau_devices$holoLON <- NA
+
+# Add Hologram location to HauHau data frame
+for (i in (1:length(hauhau_devices$devID))){
+  id_match <- grep(hauhau_devices$name[i],all_devices$name)
+  if (length(id_match)==0){
+    next
+  }
+  hauhau_devices$holoLAT[i] <- all_devices$lat[id_match]
+  hauhau_devices$holoLON[i] <- all_devices$lon[id_match]
 }
