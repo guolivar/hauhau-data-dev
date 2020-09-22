@@ -95,9 +95,9 @@ for (device in hauhau_devices$devID){
   dataHH$pm25 <- NA
   id_dev <- which(hauhau_devices$devID==device)
   geoloc <- unlist(strsplit(server_response$geoloc, ","))
-  hauhau_devices$lat[id_dev] <- geoloc[1]
-  hauhau_devices$lon[id_dev] <- geoloc[2]
-  hauhau_devices$loc_accuracy[id_dev] <- geoloc[3]
+  hauhau_devices$lat[id_dev] <- ifelse(geoloc[1]>0, geoloc[1], NA)
+  hauhau_devices$lon[id_dev] <- ifelse(geoloc[2]>0, geoloc[2], NA)
+  hauhau_devices$loc_accuracy[id_dev] <- ifelse(geoloc[3]>0, geoloc[3], NA)
   
   for (i in (1:npoints)){
     dataHH$date[i] <- as.POSIXct(jreq1[[i]][[1]])

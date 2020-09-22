@@ -35,6 +35,7 @@ x_start <- x_now - 24 * 3600
 startDate <- strftime(x_start,format = "%Y-%m-%d%%20%H:%M:%S")
 endDate <- strftime(x_now,format = "%Y-%m-%d%%20%H:%M:%S")
 plot_startDate <- strftime(x_start,format = "%Y-%m-%d% %H:00:00")
+plot_endDate <- strftime(x_now,format = "%Y-%m-%d% %H:59:00")
 
 # Get list of devices
 hauhau_devices <- read_delim("hauhau-devices.csv",
@@ -42,6 +43,12 @@ hauhau_devices <- read_delim("hauhau-devices.csv",
                              escape_double = FALSE,
                              trim_ws = TRUE)
 names(hauhau_devices) <- c('name','devID','type','location','user','guestflag')
+
+# Empty the output bucket
+objects_in_bucket <- get_bucket_df(bucket_out)$Key
+if (length(objects_in_bucket)>0){
+  delete_object(objects_in_bucket, bucket_out, quiet = TRUE)
+}
 
 for (device in hauhau_devices$devID){
   print(device)
@@ -92,6 +99,7 @@ for (device in hauhau_devices$devID){
   
   data_plot <- timeAverage(dataHH,
                            start.date = plot_startDate,
+                           end.date = plot_endDate,
                            avg.time = '1 min',
                            fill = TRUE)
   
