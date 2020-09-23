@@ -104,16 +104,16 @@ for (device in hauhau_devices$devID){
                            fill = TRUE)
   
   png(paste0("./plots/",server_response$name,".png"),
-      width = 1024,
+      width = 512,
       height = 512)
   timePlot(data_plot,
            pollutant = c('co2',
                          'pm25',
                          'temperature',
                          'humidity'),
-#           avg.time = "1 min",
            y.relation = 'free',
-           main = paste0(server_response$name," - ",server_response$location))
+           main = paste0(server_response$name," - ",server_response$location),
+           par.settings=list(fontsize=list(text=18)))
   dev.off()
   
   # Save the plot to the S3 bucket
@@ -124,3 +124,28 @@ for (device in hauhau_devices$devID){
              acl = "public-read")
   
 }
+
+objects_in_bucket <- get_bucket_df(bucket_out)$Key
+nplots <- length(objects_in_bucket)
+lines_to_write <- c("","","")
+base_s3_url <- "https://hau-hau-public.s3-ap-southeast-2.amazonaws.com/"
+for (i in (1:nplots)){
+  lines_to_write[1] <- paste0("<a target=\"_blank\" href=\"",
+                              base_s3_url,
+                              objects_in_bucket[i],
+                              "\">")
+  lines_to_write[2] <- paste0("<img src=\"",
+                              base_s3_url,
+                              objects_in_bucket[i],
+                              "\" alt=Plot>")
+  lines_to_write[3] <- "</a>"
+  write_lines(lines_to_write,path = "./summary_wikidot.html", append = TRUE)
+}
+write_lines("</body>\n</html>","./summary_wikidot.html",append = TRUE)
+
+put_object(file = "./summary_wikidot.html",
+           object = "summary_wikidot.html",
+           bucket = bucket_out,
+           multipart = TRUE,
+           acl = "public-read")
+
