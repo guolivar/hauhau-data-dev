@@ -89,6 +89,13 @@ for (device in hauhau_devices$devID){
   dataHH$co2 <- NA
   dataHH$pm25 <- NA
   
+  # Now check that we have something to average!
+  if (npoints < 10){
+    print("Too few datapoints")
+    next
+  } else {
+    print("I have some data to average")
+  }
   for (i in (1:npoints)){
     dataHH$date[i] <- as.POSIXct(jreq1[[i]][[1]])
     dataHH$temperature[i] <- as.numeric(jreq1[[i]][[2]])
@@ -102,7 +109,7 @@ for (device in hauhau_devices$devID){
                            end.date = plot_endDate,
                            avg.time = '1 min',
                            fill = TRUE)
-  
+  print("Now I'll plot the data")
   png(paste0("./plots/",server_response$name,".png"),
       width = 512,
       height = 512)
